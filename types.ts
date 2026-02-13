@@ -8,6 +8,7 @@ export interface Folder {
   createdAt: number;
   userId: string;
   color?: string; // For UI decoration
+  order?: number; // For drag & drop ordering
 }
 
 export interface LinkItem {

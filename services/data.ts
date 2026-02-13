@@ -46,6 +46,14 @@ export const addFolder = async (folder: Omit<Folder, 'id'>): Promise<Folder> => 
   return { ...folder, id: docRef.id };
 };
 
+export const updateFolder = async (
+  userId: string,
+  folderId: string,
+  updates: Partial<Folder>
+): Promise<void> => {
+  await updateDoc(doc(db, `users/${userId}/folders`, folderId), updates);
+};
+
 export const addLink = async (link: Omit<LinkItem, 'id'>): Promise<LinkItem> => {
   const docRef = await addDoc(collection(db, `users/${link.userId}/links`), link);
   return { ...link, id: docRef.id };
@@ -79,4 +87,15 @@ export const toggleFavorite = async (
   await updateDoc(doc(db, `users/${userId}/links`, linkId), {
     isFavorite: !currentStatus,
   });
+};
+
+export const reorderFolders = async (
+  userId: string,
+  orderedFolderIds: string[]
+): Promise<void> => {
+  const batch = writeBatch(db);
+  orderedFolderIds.forEach((folderId, index) => {
+    batch.update(doc(db, `users/${userId}/folders`, folderId), { order: index });
+  });
+  await batch.commit();
 };

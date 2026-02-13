@@ -8,6 +8,8 @@ import {
     deleteLink as deleteLinkApi,
     deleteFolder as deleteFolderApi,
     toggleFavorite as toggleFavoriteApi,
+    reorderFolders as reorderFoldersApi,
+    updateFolder as updateFolderApi,
 } from '../services/data';
 import { Folder, LinkItem } from '../types';
 
@@ -28,6 +30,8 @@ interface DataContextType {
     deleteLink: (linkId: string) => Promise<void>;
     deleteFolder: (folderId: string) => Promise<void>;
     toggleFavorite: (linkId: string, currentStatus: boolean) => Promise<void>;
+    reorderFolders: (orderedFolderIds: string[]) => Promise<void>;
+    updateFolder: (folderId: string, updates: Partial<Folder>) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType>({} as DataContextType);
@@ -74,8 +78,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
     }, [user]);
 
-    // Computed: public folders (non-private)
-    const publicFolders = useMemo(() => folders.filter(f => !f.isPrivate), [folders]);
+    // Computed: public folders (non-private), sorted by order
+    const publicFolders = useMemo(() => {
+        return folders
+            .filter(f => !f.isPrivate)
+            .sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+    }, [folders]);
 
     // Computed: public vs private links
     const publicLinks = useMemo(() => links.filter(l => !l.isPrivate), [links]);
@@ -114,6 +122,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await toggleFavoriteApi(user.uid, linkId, currentStatus);
     }, [user]);
 
+    const reorderFolders = useCallback(async (orderedFolderIds: string[]) => {
+        if (!user) return;
+        await reorderFoldersApi(user.uid, orderedFolderIds);
+    }, [user]);
+
+    const updateFolder = useCallback(async (folderId: string, updates: Partial<Folder>) => {
+        if (!user) return;
+        await updateFolderApi(user.uid, folderId, updates);
+    }, [user]);
+
     const value = useMemo(() => ({
         folders,
         links,
@@ -127,7 +145,9 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deleteLink,
         deleteFolder,
         toggleFavorite,
-    }), [folders, links, loading, publicFolders, publicLinks, privateLinks, linkCounts, addFolder, addLink, deleteLink, deleteFolder, toggleFavorite]);
+        reorderFolders,
+        updateFolder,
+    }), [folders, links, loading, publicFolders, publicLinks, privateLinks, linkCounts, addFolder, addLink, deleteLink, deleteFolder, toggleFavorite, reorderFolders, updateFolder]);
 
     return (
         <DataContext.Provider value={value}>

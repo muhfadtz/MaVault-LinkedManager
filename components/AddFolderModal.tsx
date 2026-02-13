@@ -1,45 +1,69 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { useData } from '../context/DataContext';
+import { Folder } from '../types';
 
 interface AddFolderModalProps {
   isOpen: boolean;
   onClose: () => void;
   userId: string;
+  initialData?: Folder | null; // If provided, acts as Edit Modal
 }
 
 export const AddFolderModal: React.FC<AddFolderModalProps> = ({
-  isOpen, onClose, userId
+  isOpen, onClose, userId, initialData
 }) => {
-  const { addFolder } = useData();
+  const { addFolder, updateFolder } = useData();
   const [name, setName] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialData) {
+        setName(initialData.name);
+        setIsPrivate(initialData.isPrivate);
+      } else {
+        setName('');
+        setIsPrivate(false);
+      }
+    }
+  }, [isOpen, initialData]);
 
   const handleSave = async () => {
     if (!name.trim()) return;
     setLoading(true);
     try {
-      await addFolder({
-        name,
-        isPrivate,
-        userId,
-        createdAt: Date.now()
-      });
+      if (initialData) {
+        await updateFolder(initialData.id, {
+          name,
+          isPrivate
+        });
+      } else {
+        await addFolder({
+          name,
+          isPrivate,
+          userId,
+          createdAt: Date.now()
+        });
+      }
       onClose();
-      setName('');
-      setIsPrivate(false);
+      // Reset only if not editing (or just rely on useEffect)
+      if (!initialData) {
+        setName('');
+        setIsPrivate(false);
+      }
     } catch (error) {
       console.error(error);
-      alert('Failed to create folder');
+      alert(initialData ? 'Failed to update folder' : 'Failed to create folder');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Create New Folder">
+    <Modal isOpen={isOpen} onClose={onClose} title={initialData ? "Edit Folder" : "Create New Folder"}>
       <div className="space-y-6">
         <div>
           <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Folder Name</label>
@@ -67,7 +91,7 @@ export const AddFolderModal: React.FC<AddFolderModalProps> = ({
         </div>
 
         <Button onClick={handleSave} fullWidth disabled={loading || !name.trim()}>
-          {loading ? 'Creating...' : 'Create Folder'}
+          {loading ? 'Saving...' : (initialData ? 'Save Changes' : 'Create Folder')}
         </Button>
       </div>
     </Modal>
